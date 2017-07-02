@@ -77,7 +77,6 @@
 
 ;; TODO: 't' - sort by process creation time
 ;; TODO: 'G' - auto-refresh.
-;; TODO: 'f' - run dired on the fd subdir.
 
 (defun mc-proc-snapshot ()
   "Get the current status information for all processes.
@@ -232,6 +231,21 @@ See proc(5)."
   (previous-line arg)
   (mc-proc-info))
 
+(defun mc-proc-dired-fd ()
+  "Run dired on this process' fd directory."
+  (interactive)
+  (dired-other-window (concat "/proc/"
+                              (number-to-string (mc-proc-get-pid))
+                              "/fd")))
+
+(defun mc-proc-dired-cwd ()
+  "Run dired on this process' current working directory."
+  (interactive)
+  (dired-other-window
+   (file-truename (concat "/proc/"
+                          (number-to-string (mc-proc-get-pid))
+                          "/cwd"))))
+
 (defvar mc-proc-mode-map nil "")
 
 (if mc-proc-mode-map
@@ -245,15 +259,15 @@ See proc(5)."
   (define-key mc-proc-mode-map "\\" 'mc-proc-mark-quit)
 
   (define-key mc-proc-mode-map "\r" 'mc-proc-info)
-  (define-key mc-proc-mode-map "i" 'mc-proc-info)
   (define-key mc-proc-mode-map "u" 'mc-proc-unmark)
   (define-key mc-proc-mode-map "U" 'mc-proc-unmark-all)
   (define-key mc-proc-mode-map "x" 'mc-proc-execute)
-  (define-key mc-proc-mode-map "q" 'bury-buffer)
-
+  (define-key mc-proc-mode-map "f" 'mc-proc-dired-fd)
+  (define-key mc-proc-mode-map "w" 'mc-proc-dired-cwd)
   (define-key mc-proc-mode-map "n" 'mc-proc-next-line)
   (define-key mc-proc-mode-map "p" 'mc-proc-previous-line)
   (define-key mc-proc-mode-map "g" 'revert-buffer))
+  (define-key mc-proc-mode-map "q" 'bury-buffer)
 
 ;; mode is suitable only for specially formatted data.
 (put 'mc-proc-mode 'mode-class 'special)
