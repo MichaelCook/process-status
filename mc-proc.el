@@ -90,7 +90,7 @@ See proc(5)."
                                  (and (> pid 0)
                                       (with-temp-buffer
                                         (ignore-errors
-                                          (insert-file-contents (concat "/proc/" entry "/stat")))
+                                          (insert-file-contents (mc-proc-file-name "stat" pid)))
                                         (goto-char (point-min))
                                         ;; pid (comm) state ppid
                                         ;; `comm` is always in parens and might contain spaces.
@@ -231,20 +231,22 @@ See proc(5)."
   (previous-line arg)
   (mc-proc-info))
 
+(defun mc-proc-file-name (name &optional pid)
+  "Return /proc/PID/NAME.  PID defaults to `mc-proc-get-pid`."
+  (concat "/proc/"
+          (number-to-string (or pid (mc-proc-get-pid)))
+          "/" name))
+
 (defun mc-proc-dired-fd ()
   "Run dired on this process' fd directory."
   (interactive)
-  (dired-other-window (concat "/proc/"
-                              (number-to-string (mc-proc-get-pid))
-                              "/fd")))
+  (dired-other-window (mc-proc-file-name "fd")))
 
 (defun mc-proc-dired-cwd ()
   "Run dired on this process' current working directory."
   (interactive)
   (dired-other-window
-   (file-truename (concat "/proc/"
-                          (number-to-string (mc-proc-get-pid))
-                          "/cwd"))))
+   (file-truename (mc-proc-file-name "cwd"))))
 
 (defvar mc-proc-mode-map nil "")
 
@@ -341,7 +343,7 @@ Letters do not insert themselves; instead, they are commands.
 
 (defun mc-proc-get-link (pid name)
   "Return the contents of symlink /proc/PID/NAME, or nil if not available."
-  (let ((link (concat "/proc/" (number-to-string pid) "/" name)))
+  (let ((link (mc-proc-file-name name pid)))
     (if (file-symlink-p link)
         (file-truename link))))
 
@@ -352,7 +354,7 @@ If TERMINATOR is not nil and if the last character in the file is that
 character, then remove it from the returned string."
   (ignore-errors
     (with-temp-buffer
-      (insert-file-contents (concat "/proc/" (number-to-string pid) "/" name))
+      (insert-file-contents (mc-proc-file-name name pid))
       (goto-char (point-max))
       (if (and terminator
                (not (bobp))
