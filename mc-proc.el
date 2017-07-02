@@ -217,8 +217,9 @@ See proc(5)."
 	      (point))
 	   cur-col)
 	(end-of-line)
-      (forward-char cur-col)))
-  (mc-proc-mode))
+      (forward-char cur-col))
+    (set-buffer-modified-p nil)
+    (mc-proc-mode)))
 
 (defun mc-proc-next-line (arg)
   "Move to next line and show process info."
@@ -273,7 +274,10 @@ Letters do not insert themselves; instead, they are commands.
   (run-hooks 'mc-proc-mode-hook))
 
 (defun mc-proc-revert-function (ignore1 ignore2)
-  (mc-proc-update))
+  (mc-proc-update)
+  ;; Update the details buffer in case it's already displayed, but don't force
+  ;; it to be displayed.
+  (mc-proc-make-info-buffer (mc-proc-get-pid)))
 
 (defun mc-proc-mark (sig)
   ;; Mark the current process indicating
@@ -336,22 +340,22 @@ character, then remove it from the returned string."
 (defun mc-proc-get-argv (pid)
   "Return the command line arguments for pid (or nil if not available)."
   (let ((cmdline (mc-proc-get-file pid "cmdline" ?\0)))
-    (when (and cmdline
-               (> (length cmdline) 0))
-      (split-string cmdline "\0"))))
+    (if (and cmdline
+             (> (length cmdline) 0))
+        (split-string cmdline "\0"))))
 
 (defun mc-proc-get-environ (pid)
   "Return the environment variables for pid (or nil if not available)."
   (let ((environ (mc-proc-get-file pid "environ" ?\0)))
-    (when (and environ
-               (> (length environ) 0))
-      (split-string environ "\0"))))
+    (if (and environ
+             (> (length environ) 0))
+        (split-string environ "\0"))))
 
-(defun mc-proc-info ()
-  "Show details about this process."
-  (interactive)
-  (let ((pid (mc-proc-get-pid))
-        (buffer (get-buffer-create "*Process Status Details*"))
+(defun mc-proc-make-info-buffer (pid)
+  "Construct the *Process Status Details* buffer for PID.
+
+Return the buffer."
+  (let ((buffer (get-buffer-create "*Process Status Details*"))
         stat)
     (with-current-buffer buffer
       (erase-buffer)
@@ -540,7 +544,13 @@ character, then remove it from the returned string."
           (setq label "         ")))
 
       (goto-char (point-min))
-    (display-buffer buffer))))
+      (set-buffer-modified-p nil)
+      buffer)))
+
+(defun mc-proc-info ()
+  "Show details about the process at point."
+  (interactive)
+  (display-buffer (mc-proc-make-info-buffer (mc-proc-get-pid))))
 
 (defun mc-proc-get-pid ()
   "Get the pid for the current line."
