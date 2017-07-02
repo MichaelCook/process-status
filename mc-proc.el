@@ -279,50 +279,51 @@ Letters do not insert themselves; instead, they are commands.
   ;; it to be displayed.
   (mc-proc-make-info-buffer (mc-proc-get-pid)))
 
-(defun mc-proc-mark (sig)
-  ;; Mark the current process indicating
-  ;; which signal it should receive.
-  (save-excursion
-    (let (buffer-read-only)
-      (beginning-of-line)
+(defun mc-proc-mark (num sig)
+  ;; Mark the current NUM processes indicating
+  ;; which signal they should receive.
+  (forward-line 0)
+  (let (buffer-read-only)
+    (while (and (not (eobp))
+                (> num 0))
       (delete-char 1)
       (insert (if sig
-		  (car (rassoc sig mc-proc-marks))
-		? ))))
-  (forward-line 1))
+                  (car (rassoc sig mc-proc-marks))
+                ? ))
+      (forward-line 1)
+      (setq num (1- num)))))
 
-(defun mc-proc-mark-term ()
+(defun mc-proc-mark-term (num)
   "Mark this process to receive a SIGTERM signal."
-  (interactive)
-  (mc-proc-mark 'SIGTERM))
+  (interactive "p")
+  (mc-proc-mark num 'SIGTERM))
 
-(defun mc-proc-mark-hup ()
+(defun mc-proc-mark-hup (num)
   "Mark this process to receive a SIGHUP signal."
-  (interactive)
-  (mc-proc-mark 'SIGHUP))
+  (interactive "p")
+  (mc-proc-mark num 'SIGHUP))
 
-(defun mc-proc-mark-kill ()
+(defun mc-proc-mark-kill (num)
   "Mark this process to receive a SIGKILL signal."
-  (interactive)
-  (mc-proc-mark 'SIGKILL))
+  (interactive "p")
+  (mc-proc-mark num 'SIGKILL))
 
-(defun mc-proc-mark-quit ()
+(defun mc-proc-mark-quit (num)
   "Mark this process to receive a SIGQUIT signal."
-  (interactive)
-  (mc-proc-mark 'SIGQUIT))
+  (interactive "p")
+  (mc-proc-mark num 'SIGQUIT))
 
-(defun mc-proc-unmark ()
+(defun mc-proc-unmark (num)
   "Mark this process to receive no signal."
-  (interactive)
-  (mc-proc-mark nil))
+  (interactive "p")
+  (mc-proc-mark num nil))
 
 (defun mc-proc-unmark-all ()
   "Remove signal marks from all processes."
   (interactive)
   (save-excursion
     (goto-char (point-min))
-    (while (not (eobp))
-      (mc-proc-unmark))))
+    (mc-proc-mark (count-lines (point) (point-max)) nil)))
 
 (defun mc-proc-get-link (pid name)
   "Return the contents of symlink /proc/PID/NAME, or nil if not available."
