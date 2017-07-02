@@ -77,7 +77,6 @@
 
 ;; TODO: 't' - sort by process creation time
 ;; TODO: 'G' - auto-refresh.
-;; TODO: 'U' - unmark all.
 ;; TODO: 'f' - run dired on the fd subdir.
 
 (defun mc-proc-snapshot ()
@@ -248,6 +247,7 @@ See proc(5)."
   (define-key mc-proc-mode-map "\r" 'mc-proc-info)
   (define-key mc-proc-mode-map "i" 'mc-proc-info)
   (define-key mc-proc-mode-map "u" 'mc-proc-unmark)
+  (define-key mc-proc-mode-map "U" 'mc-proc-unmark-all)
   (define-key mc-proc-mode-map "x" 'mc-proc-execute)
   (define-key mc-proc-mode-map "q" 'bury-buffer)
 
@@ -315,6 +315,14 @@ Letters do not insert themselves; instead, they are commands.
   "Mark this process to receive no signal."
   (interactive)
   (mc-proc-mark nil))
+
+(defun mc-proc-unmark-all ()
+  "Remove signal marks from all processes."
+  (interactive)
+  (save-excursion
+    (goto-char (point-min))
+    (while (not (eobp))
+      (mc-proc-unmark))))
 
 (defun mc-proc-get-link (pid name)
   "Return the contents of symlink /proc/PID/NAME, or nil if not available."
