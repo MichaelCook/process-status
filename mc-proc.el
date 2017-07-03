@@ -76,7 +76,6 @@
 ;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ;; TODO: 't' - sort by process creation time
-;; TODO: 'G' - auto-refresh.
 
 (defun mc-proc-snapshot ()
   "Get the current status information for all processes.
@@ -194,30 +193,13 @@ See proc(5)."
   (mc-proc-update))
 
 (defun mc-proc-update ()
-  (let ((start-line (count-lines 1 (window-start)))
-	(cur-line (count-lines 1 (save-excursion (beginning-of-line)
-						 (point))))
-	(cur-col (- (point) (save-excursion (beginning-of-line)
-					    (point)))))
+  (let ((wbl (mc-proc-get-window-buffer-locations (current-buffer))))
     (setq buffer-read-only nil)
     (erase-buffer)
     (mc-proc-insert-tree (mc-proc-snapshot))
-
-    (goto-char (point-min))
-    (forward-line start-line)
-    (and (eobp)
-	 (goto-char (point-min)))
-    (set-window-start nil (point))
-    (goto-char (point-min))
-    (forward-line cur-line)
-    (if (< (- (save-excursion (end-of-line)
-			      (point))
-	      (point))
-	   cur-col)
-	(end-of-line)
-      (forward-char cur-col))
     (set-buffer-modified-p nil)
-    (mc-proc-mode)))
+    (mc-proc-mode)
+    (mc-proc-set-window-buffer-locations (current-buffer) wbl)))
 
 (defun mc-proc-next-line (arg)
   "Move to next line and show process info."
@@ -268,8 +250,9 @@ See proc(5)."
   (define-key mc-proc-mode-map "w" 'mc-proc-dired-cwd)
   (define-key mc-proc-mode-map "n" 'mc-proc-next-line)
   (define-key mc-proc-mode-map "p" 'mc-proc-previous-line)
-  (define-key mc-proc-mode-map "g" 'revert-buffer))
-  (define-key mc-proc-mode-map "q" 'bury-buffer)
+  (define-key mc-proc-mode-map "G" 'mc-proc-toggle-refresh)
+  (define-key mc-proc-mode-map "g" 'revert-buffer)
+  (define-key mc-proc-mode-map "q" 'bury-buffer))
 
 ;; mode is suitable only for specially formatted data.
 (put 'mc-proc-mode 'mode-class 'special)
@@ -312,21 +295,25 @@ Letters do not insert themselves; instead, they are commands.
 (defun mc-proc-mark-term (num)
   "Mark this process to receive a SIGTERM signal."
   (interactive "p")
+  (mc-proc-stop-refresh)
   (mc-proc-mark num 'SIGTERM))
 
 (defun mc-proc-mark-hup (num)
   "Mark this process to receive a SIGHUP signal."
   (interactive "p")
+  (mc-proc-stop-refresh)
   (mc-proc-mark num 'SIGHUP))
 
 (defun mc-proc-mark-kill (num)
   "Mark this process to receive a SIGKILL signal."
   (interactive "p")
+  (mc-proc-stop-refresh)
   (mc-proc-mark num 'SIGKILL))
 
 (defun mc-proc-mark-quit (num)
   "Mark this process to receive a SIGQUIT signal."
   (interactive "p")
+  (mc-proc-stop-refresh)
   (mc-proc-mark num 'SIGQUIT))
 
 (defun mc-proc-unmark (num)
@@ -383,6 +370,7 @@ Return the buffer."
   (let ((buffer (get-buffer-create "*Process Status Details*"))
         stat)
     (with-current-buffer buffer
+      (setq buffer-read-only nil)
       (erase-buffer)
       (insert "pid      " (number-to-string pid) "\n")
 
@@ -570,6 +558,7 @@ Return the buffer."
 
       (goto-char (point-min))
       (set-buffer-modified-p nil)
+      (setq buffer-read-only t)
       buffer)))
 
 (defun mc-proc-info ()
@@ -579,13 +568,15 @@ Return the buffer."
 
 (defun mc-proc-get-pid ()
   "Get the pid for the current line."
-
+  ;; Find the pid.
+  ;; The first character might be a signal marker like:
+  ;; H 12345 \_ command
   (save-excursion (forward-line 0)
-                  (or (looking-at "^ *[0-9]+\\>")
+                  (or (looking-at "^. *\\([0-9]+\\)\\>")
                       (error "No PID")))
   (string-to-number (buffer-substring
-                     (match-beginning 0)
-                     (match-end 0))))
+                     (match-beginning 1)
+                     (match-end 1))))
 
 (defun mc-proc-execute ()
   "Send the indicated signals to all of the marked processes."
@@ -636,3 +627,78 @@ Return the buffer."
 	      t				;Process does not exist.
 	    err))			;Some other error occurred.
       nil)))				;Success.
+
+(defvar mc-proc-refresh-timer nil
+  "When not nil, the buffer is being automatically refreshed.")
+
+(defun mc-proc-refresh-timer-handler ()
+  "Called each time the refresh timer expires."
+  (let ((buffer (get-buffer "*process-status*")))
+    (if (and buffer
+             (get-buffer-window buffer 'visible))
+        (with-current-buffer buffer
+          (revert-buffer))
+      ;; Automatically stop refreshing when the buffer is no longer
+      ;; displayed anywhere.
+      (cancel-timer mc-proc-refresh-timer)
+      (setq mc-proc-refresh-timer nil))))
+
+(defun mc-proc-stop-refresh ()
+  (when mc-proc-refresh-timer
+    (cancel-timer mc-proc-refresh-timer)
+    (setq mc-proc-refresh-timer nil)))
+
+(defun mc-proc-toggle-refresh ()
+  "Enable or disable auto-refreshing."
+  (interactive)
+  (if mc-proc-refresh-timer
+      (progn
+        (mc-proc-stop-refresh)
+        (message "Refresh disabled"))
+    (setq mc-proc-refresh-timer
+          (run-with-timer .1 2 #'mc-proc-refresh-timer-handler))
+    (message "Refresh enabled")))
+
+(defun mc-proc-get-window-buffer-locations (buffer)
+  "Get point for BUFFER in all windows.
+
+Returns a list of window window-start line column (zero based)."
+  (let (locations)
+    (dolist (frame (frame-list))
+      (dolist (window (window-list frame))
+        (if (eq buffer (window-buffer window))
+            (with-selected-window window
+              (with-current-buffer buffer
+                (setq locations
+                      (cons (list (cons 'window window)
+                                  (cons 'window-start (window-start window))
+                                  (cons 'line
+                                        (count-lines 1 (save-excursion (forward-line 0)
+                                                                       (point))))
+                                  (cons 'column
+                                        (- (point)
+                                           (save-excursion (forward-line 0)
+                                                           (point)))))
+                            locations)))))))
+    locations))
+
+(defun mc-proc-set-window-buffer-locations (buffer locations)
+  "Set point for BUFFER in the given windows.
+
+LOCATIONS is from `mc-proc-get-window-buffer-locations`."
+  (dolist (location locations)
+    (let ((window (cdr (assq 'window location)))
+          (window-start (cdr (assq 'window-start location)))
+          (line (cdr (assq 'line location)))
+          (column (cdr (assq 'column location))))
+      (with-selected-window window
+        (with-current-buffer buffer
+          (set-window-start window window-start)
+          (goto-char (point-min))
+          (forward-line line)
+          (if (< (- (save-excursion (end-of-line)
+                                    (point))
+                    (point))
+                 column)
+              (end-of-line)
+            (forward-char column)))))))
