@@ -230,8 +230,15 @@ See proc(5)."
   (dired-other-window
    (file-truename (mc-proc-file-name "cwd"))))
 
-(defvar mc-proc-mode-map nil "")
+(defun mc-proc-mouse-up (event)
+  "Set point at the mouse click and display the process info."
+  (interactive "e")
+  (let ((posn (elt event 1)))
+    (with-selected-window (posn-window posn)
+      (goto-char (posn-point posn))
+      (mc-proc-info))))
 
+(defvar mc-proc-mode-map nil "")
 (if mc-proc-mode-map
     ()
   (setq mc-proc-mode-map (make-keymap))
@@ -243,6 +250,7 @@ See proc(5)."
   (define-key mc-proc-mode-map "\\" 'mc-proc-mark-quit)
 
   (define-key mc-proc-mode-map "\r" 'mc-proc-info)
+  (define-key mc-proc-mode-map [mouse-1] 'mc-proc-mouse-up)
   (define-key mc-proc-mode-map "u" 'mc-proc-unmark)
   (define-key mc-proc-mode-map "U" 'mc-proc-unmark-all)
   (define-key mc-proc-mode-map "x" 'mc-proc-execute)
