@@ -371,6 +371,11 @@ character, then remove it from the returned string."
              (> (length environ) 0))
         (split-string environ "\0"))))
 
+(defun mc-proc-shell-quote-argument (string)
+  (if (string-match "[^[:alnum:]_@%:,./=+-]" string)
+      (concat "'" (replace-regexp-in-string "'" "'\\\\''" string) "'")
+    string))
+
 (defun mc-proc-make-info-buffer (pid)
   "Construct the *Process Status Details* buffer for PID.
 
@@ -454,7 +459,7 @@ Return the buffer."
         (when argv
           (insert "argv    ")
           (dolist (arg argv)
-            (insert " " (shell-quote-argument arg)))
+            (insert " " (mc-proc-shell-quote-argument arg)))
           (insert "\n")))
 
       (let ((comm (mc-proc-get-file pid "comm" ?\n)))
@@ -561,13 +566,53 @@ Return the buffer."
       (let ((environ (mc-proc-get-environ pid))
             (label "environ  "))
         (dolist (env (sort environ 'string<))
-          (insert label env "\n")
+          (insert label (mc-proc-quote-env-for-shell env) "\n")
           (setq label "         ")))
 
       (goto-char (point-min))
       (set-buffer-modified-p nil)
       (setq buffer-read-only t)
       buffer)))
+
+(defun mc-proc-escape-string-for-shell (string)
+  (let ((escape-map '((?' . "\\'")
+                      (?\\ . "\\\\")
+                      (?\a . "\\a")
+                      (?\b . "\\b")
+                      (?\e . "\\e")
+                      (?\f . "\\f")
+                      (?\n . "\\n")
+                      (?\r . "\\r")
+                      (?\t . "\\t")
+                      (?\v . "\\v"))))
+    (replace-regexp-in-string "[\\'\x00-\x1f\x7f-\xff]"
+                              (lambda (c)
+                                (setq c (string-to-char c))
+                                (or (assoc-default c escape-map 'eq)
+                                    (format "\\x%02X" c)))
+                              string
+                              t    ;fixedcase
+                              t))) ;literal
+
+(defun mc-proc-quote-string-for-shell (string)
+  (let ((escaped (mc-proc-escape-string-for-shell string)))
+    (if (string= escaped string)
+        (if (string-match " " string)
+            (concat "'" string "'")
+          string)
+      (concat "$'" escaped "'"))))
+
+;; (mc-proc-quote-string-for-shell "foo\tbar\rbaz\0qux\ncan't\\foo")
+
+(defun mc-proc-quote-env-for-shell (string)
+  (let ((i (string-match "=" string)))
+    (if i
+        (concat (mc-proc-quote-string-for-shell (substring string 0 i))
+                "="
+                (mc-proc-quote-string-for-shell (substring string (1+ i))))
+      (mc-proc-quote-string-for-shell string))))
+
+;; (mc-proc-quote-env-for-shell "HELLO=foo\tbar")
 
 (defun mc-proc-info ()
   "Show details about the process at point."
