@@ -133,6 +133,16 @@ See proc(5)."
 
     procs))
 
+(defvar mc-proc-tree-strings
+  (if (char-displayable-p ?\u251c)
+      '("    " " \u2502  " " \u2514\u2500 " " \u251c\u2500 ")
+    '("    " " |  " " \\_ " " |_ "))
+  "Four strings for drawing the process tree: BLANK VERTICAL CORNER TEE")
+;; (nth 0 mc-proc-tree-strings) ;BLANK
+;; (nth 1 mc-proc-tree-strings) ;VERTICAL
+;; (nth 2 mc-proc-tree-strings) ;CORNER
+;; (nth 3 mc-proc-tree-strings) ;TEE
+
 (defun mc-proc-insert-tree-internal (pid is-last-child procs shown)
   (if (memq pid shown)
       nil
@@ -152,9 +162,13 @@ See proc(5)."
                           state
                           (if is-last-child
                               (concat (apply 'concat (mapcar (lambda (x)
-                                                               (if (eq x 'yes) "    " " |  "))
+                                                               (if (eq x 'yes)
+                                                                   (nth 0 mc-proc-tree-strings) ;BLANK
+                                                                 (nth 1 mc-proc-tree-strings))) ;VERTICAL
                                                              (reverse (cdr is-last-child))))
-                                      " \\_ ")
+                                      (if (eq (car is-last-child) 'yes)
+                                          (nth 2 mc-proc-tree-strings) ;CORNER
+                                        (nth 3 mc-proc-tree-strings))) ;TEE
                             "")
                           comm)))
         (setcdr shown (cons pid (cdr shown)))
