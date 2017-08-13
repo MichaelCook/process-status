@@ -269,7 +269,7 @@ See proc(5)."
   (define-key mc-proc-mode-map "U" 'mc-proc-unmark-all)
   (define-key mc-proc-mode-map "x" 'mc-proc-execute)
   (define-key mc-proc-mode-map "f" 'mc-proc-dired-fd)
-  (define-key mc-proc-mode-map "w" 'mc-proc-dired-cwd)
+  (define-key mc-proc-mode-map "c" 'mc-proc-dired-cwd)
   (define-key mc-proc-mode-map "n" 'mc-proc-next-line)
   (define-key mc-proc-mode-map "p" 'mc-proc-previous-line)
   (define-key mc-proc-mode-map "G" 'mc-proc-toggle-refresh)
