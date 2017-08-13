@@ -8,17 +8,17 @@ relationships.  For example:
 
 ```
       1   systemd
-    236    \_ systemd-journal
-    248    \_ systemd-udevd
-    669    \_ repowerd
-    670    \_ avahi-daemon
+    236    |_ systemd-journal
+    248    |_ systemd-udevd
+    669    |_ repowerd
+    670    |_ avahi-daemon
     704    |   \_ avahi-daemon
-   1163    \_ lightdm
-   1215    |   \_ Xorg
+   1163    |_ lightdm
+   1215    |   |_ Xorg
    1326    |   \_ lightdm
    1353    |       \_ run-systemd-ses
-   1461    |           \_ unclutter
-   1494    |           \_ ssh-agent
+   1461    |           |_ unclutter
+   1494    |           |_ ssh-agent
    1645    |           \_ systemctl
 ...
 ```
