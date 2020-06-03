@@ -157,7 +157,7 @@ See proc(5)."
           (if (string= state "S")
               (setq state " "))
 
-          (insert (format "  %5s %s %s%s\n"
+          (insert (format "  %6s %s %s%s\n"
                           pid
                           state
                           (if is-last-child
