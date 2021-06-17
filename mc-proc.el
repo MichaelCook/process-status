@@ -217,14 +217,14 @@ See proc(5)."
 
 (defun mc-proc-next-line (arg)
   "Move to next line and show process info."
-  (interactive "P")
-  (next-line arg)
+  (interactive "p")
+  (forward-line arg)
   (mc-proc-info))
 
 (defun mc-proc-previous-line (arg)
   "Move to previous line and show process info."
-  (interactive "P")
-  (previous-line arg)
+  (interactive "p")
+  (forward-line (- arg))
   (mc-proc-info))
 
 (defun mc-proc-file-name (name &optional pid)
