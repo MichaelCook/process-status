@@ -505,7 +505,7 @@ Return the buffer."
                                           ("K" . "Wakekill")
                                           ("W" . "Waking")
                                           ("P" . "Parked")))
-                                 ("?" . "Unknown")))
+                                 '("?" . "Unknown")))
                         " ("
                         (cdr state)
                         ")\n"))))
