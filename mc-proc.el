@@ -1,3 +1,5 @@
+;;  -*- lexical-binding: t; -*-
+
 ;; mc-proc.el : Buffer mode for displaying information from /proc.
 ;;
 ;; `M-x mc-proc RET` shows a graph of processes with parent/child
@@ -651,25 +653,25 @@ Return the buffer."
     (goto-char (point-min))
     (while (not (eobp))
       (let ((mark (char-after (point))))
-	(if (= mark ? )
-	    ;; Skip this line.  It is unmarked.
-	    (forward-line 1)
-	  ;; Find the process ID.
-	  (let* ((pid (mc-proc-get-pid))
-		 (result (mc-proc-send-signal
-			  (cdr (assoc mark mc-proc-marks))
-			  pid)))
-	    (cond ((null result)	;Signal sent ok.
-		   (forward-line 1))
-		  ((stringp result)	;An error message.
-		   (message "kill %d: %s" pid result)
-		   (forward-line 1))
-		  (t			;No such process
-		   (let (buffer-read-only)
-		     (delete-region (save-excursion (beginning-of-line)
-						    (point))
-				    (save-excursion (forward-line 1)
-						    (point))))))))))))
+        (if (= mark ? )
+            ;; Skip this line.  It is unmarked.
+            (forward-line 1)
+          ;; Find the process ID.
+          (let* ((pid (mc-proc-get-pid))
+                 (result (mc-proc-send-signal
+                          (cdr (assoc mark mc-proc-marks))
+                          pid)))
+            (cond ((null result)        ;Signal sent ok.
+                   (forward-line 1))
+                  ((stringp result)     ;An error message.
+                   (message "kill %d: %s" pid result)
+                   (forward-line 1))
+                  (t                    ;No such process
+                   (let (buffer-read-only)
+                     (delete-region (save-excursion (beginning-of-line)
+                                                    (point))
+                                    (save-excursion (forward-line 1)
+                                                    (point))))))))))))
 
 (defun mc-proc-send-signal (sig pid)
   ;; Send the signal SIG to the process PID.
@@ -679,20 +681,20 @@ Return the buffer."
 
   (with-temp-buffer
     (call-process "kill"
-		  nil			;INFILE (nil means `/dev/null')
-		  t			;BUFFER (t means current buffer)
-		  nil			;DISPLAY
-		  (concat "-" (symbol-name sig))
-		  (number-to-string pid))
+                  nil                   ;INFILE (nil means `/dev/null')
+                  t                     ;BUFFER (t means current buffer)
+                  nil                   ;DISPLAY
+                  (concat "-" (symbol-name sig))
+                  (number-to-string pid))
     (goto-char (point-min))
     ;; "kill: (1234): No such process"
     (if (re-search-forward ".*: \\(.*\\)" nil t)
-	(let ((err (buffer-substring (match-beginning 1)
-				     (match-end 1))))
-	  (if (string= err "No such process")
-	      t				;Process does not exist.
-	    err))			;Some other error occurred.
-      nil)))				;Success.
+        (let ((err (buffer-substring (match-beginning 1)
+                                     (match-end 1))))
+          (if (string= err "No such process")
+              t                         ;Process does not exist.
+            err))                       ;Some other error occurred.
+      nil)))                            ;Success.
 
 (defvar mc-proc-refresh-timer nil
   "When not nil, the buffer is being automatically refreshed.")
